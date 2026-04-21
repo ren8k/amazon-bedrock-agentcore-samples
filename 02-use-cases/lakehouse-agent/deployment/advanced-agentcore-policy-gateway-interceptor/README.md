@@ -110,6 +110,8 @@ for e in client.list_policy_engines().get('policyEngines', []):
 
 All four policies should report `ACTIVE`.
 
+> **Before running Step 4: each Cognito user must sign in once.** `verify_policy.py` authenticates via plain `admin_initiate_auth`, which fails while users are still in Cognito `FORCE_CHANGE_PASSWORD` state (the default for users created by Phase 1 `setup_cognito.py`). Start the Streamlit UI (`streamlit run streamlit-ui/streamlit_app.py`) and sign in **once per user** — `policyholder001`, `policyholder002`, `adjuster001`, `adjuster002`, and `admin` — completing the `NEW_PASSWORD_REQUIRED` challenge. Re-entering the same `TempPass123!` as the new password works because the user pool does not set `PasswordHistorySize`. After this one-time step, `verify_policy.py` will authenticate cleanly.
+
 ### Step 4 — Run the end-to-end verification
 
 ```bash

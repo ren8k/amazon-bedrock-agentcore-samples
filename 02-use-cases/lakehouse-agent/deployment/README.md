@@ -82,6 +82,8 @@ Test users created:
 
 Default password: `TempPass123!`
 
+> **Important — first-time sign-in required.** `setup_cognito.py` creates users with the default password as a *temporary* password, so every user starts in Cognito `FORCE_CHANGE_PASSWORD` state. `admin_initiate_auth` returns a `NEW_PASSWORD_REQUIRED` challenge (not an `AuthenticationResult`) until each user signs in once and completes the challenge. The Streamlit UI (Step 8) has a built-in challenge handler — launch it and sign in once per user, setting the new password to the same `TempPass123!` (the user pool does not configure `PasswordHistorySize`, so reusing the value is allowed). Only after this step will plain `admin_initiate_auth` calls (for example, from `verify_policy.py` in the Phase 2 sample) succeed.
+
 #### Optional: Enable Login Audit Logging
 
 To enable login audit logging, deploy the Post-Authentication Lambda before running setup_cognito.py:
