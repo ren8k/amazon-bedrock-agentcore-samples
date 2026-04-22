@@ -107,6 +107,7 @@
 - Dumitru Pascu (dumip)
 - Eitan Sela
 - Swara Gandhi
+- Daniel Suarez Souto (dsuarezsoutoaws)
 - Shubham Gupta (guptashs)
 - Vibhu Pareek (vibhup)
 - Richa Gupta (richagpt)
