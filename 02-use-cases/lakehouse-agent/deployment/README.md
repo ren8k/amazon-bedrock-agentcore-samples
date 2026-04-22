@@ -2,6 +2,16 @@
 
 This guide provides the deployment sequence for the Lakehouse Agent system using command-line scripts. For a guided notebook-based approach, see the Jupyter notebooks in the parent directory.
 
+The deployment is organized in two phases:
+
+- **Phase 1 — Base lakehouse-agent (Steps 1–7, this guide).** Deploys Cognito,
+  IAM tenant roles, S3 Tables + Lake Formation, the MCP server, the Gateway
+  with request/response Interceptors, and the conversational agent.
+- **Phase 2 — Advanced AgentCore Policy + Interceptor (optional, CDK).** Layers
+  Cedar-based AgentCore Policy on top of Phase 1 and upgrades the request
+  Interceptor with geography-based access control. See
+  [advanced-agentcore-policy-gateway-interceptor/README.md](advanced-agentcore-policy-gateway-interceptor/README.md).
+
 ## Prerequisites
 
 1. AWS CLI configured with appropriate permissions
@@ -71,6 +81,8 @@ Test users created:
 - `admin@example.com` → administrators group
 
 Default password: `TempPass123!`
+
+> **Important — first-time sign-in required.** `setup_cognito.py` creates users with the default password as a *temporary* password, so every user starts in Cognito `FORCE_CHANGE_PASSWORD` state. `admin_initiate_auth` returns a `NEW_PASSWORD_REQUIRED` challenge (not an `AuthenticationResult`) until each user signs in once and completes the challenge. The Streamlit UI (Step 8) has a built-in challenge handler — launch it and sign in once per user, setting the new password to the same `TempPass123!` (the user pool does not configure `PasswordHistorySize`, so reusing the value is allowed). Only after this step will plain `admin_initiate_auth` calls (for example, from `verify_policy.py` in the Phase 2 sample) succeed.
 
 #### Optional: Enable Login Audit Logging
 
@@ -302,6 +314,26 @@ Access at: http://localhost:8501
 
 ---
 
+### Step 9 (Optional): Layer AgentCore Policy + Design 3 Interceptor (Phase 2)
+
+To add declarative Cedar-based access control and geography-aware request
+enrichment on top of the Phase 1 Gateway, follow
+[advanced-agentcore-policy-gateway-interceptor/README.md](advanced-agentcore-policy-gateway-interceptor/README.md).
+
+This Phase 2 deployment adds:
+
+- `CfnPolicyEngine` with four Cedar policies (`permit_all` + three `forbid` rules).
+- An IAM inline policy granting the existing Gateway role policy-evaluation permissions.
+- A single `UpdateGateway` call that re-attaches both Interceptors together with
+  the Policy Engine in `ENFORCE` mode.
+- An upgraded request Interceptor Lambda that injects user geography so Cedar
+  can enforce data-residency rules (Design 3).
+
+Prerequisite: Phase 1 Steps 1–7 must be deployed first — the CDK stack reads
+every ARN / ID it needs from SSM parameters populated by those steps.
+
+---
+
 ## Quick Reference
 
 | Step | Directory | Command |
@@ -319,6 +351,7 @@ Access at: http://localhost:8501
 | 6 | `5-gateway-setup` | `python create_gateway.py --yes` |
 | 7 | `6-lakehouse-agent` | `python deploy_lakehouse_agent.py --yes` |
 | 8 | `streamlit-ui` | `streamlit run streamlit_app.py` |
+| 9 (optional) | `advanced-agentcore-policy-gateway-interceptor` | `bash scripts/pre-deploy.sh && npx cdk deploy` |
 
 ---
 
@@ -355,9 +388,18 @@ deployment/
 │   │   └── README.md
 │   ├── create_gateway.py                 # Step 6
 │   └── cleanup_gateway.py
-└── 6-lakehouse-agent/                    # Step 7
-    ├── deploy_lakehouse_agent.py
-    └── cleanup_agent.py
+├── 6-lakehouse-agent/                    # Step 7
+│   ├── deploy_lakehouse_agent.py
+│   └── cleanup_agent.py
+└── advanced-agentcore-policy-gateway-interceptor/   # Step 9 (optional, Phase 2)
+    ├── README.md
+    ├── bin/app.ts
+    ├── lib/policy-stack.ts
+    ├── policies/              # Cedar policies (Design 1 + Design 3)
+    ├── lambda/interceptor-request/  # Design 3 Lambda source
+    ├── scripts/               # pre-deploy + cdk.json generation
+    └── verification/
+        └── verify_policy.py
 ```
 
 ---
@@ -378,7 +420,23 @@ aws ssm get-parameters-by-path \
 
 ## Cleanup
 
-Each deployment step has a dedicated cleanup script. Run them in reverse order:
+Each deployment step has a dedicated cleanup script. Run them in reverse order.
+
+**If you deployed Phase 2 (Step 9), destroy it first** — it depends on the
+Phase 1 Gateway and the Gateway role, so Phase 1 cleanup will fail while the
+Policy Engine is still attached.
+
+```bash
+# Step 9 (Phase 2): Destroy Policy Engine + Cedar policies + role inline policy.
+# Interceptors remain attached; the CDK stack only added the Policy Engine.
+cd advanced-agentcore-policy-gateway-interceptor
+npx cdk destroy --force
+cd ..
+```
+
+See [advanced-agentcore-policy-gateway-interceptor/README.md#cleanup](advanced-agentcore-policy-gateway-interceptor/README.md#cleanup) for notes on rolling back the Design 3 Lambda source before Phase 1 cleanup.
+
+Then run the Phase 1 cleanup scripts:
 
 ```bash
 # Step 7: Delete Lakehouse Agent
