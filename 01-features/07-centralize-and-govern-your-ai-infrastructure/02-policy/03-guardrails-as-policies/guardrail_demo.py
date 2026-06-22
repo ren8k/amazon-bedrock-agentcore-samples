@@ -38,10 +38,10 @@ from utils.agent_with_tools import AgentSession
 
 # ANSI colors
 GREEN = "\033[92m"
-RED   = "\033[91m"
+RED = "\033[91m"
 YELLOW = "\033[93m"
 RESET = "\033[0m"
-BOLD  = "\033[1m"
+BOLD = "\033[1m"
 
 
 def load_config(path: str = "guardrail_config.json") -> dict:
@@ -264,9 +264,7 @@ def part_b_agent_demo(config: dict) -> list:
     print("\n[B3] Agent — Risk model call (no message field, ALLOW)")
     print("─" * 65)
     with AgentSession(verbose=True) as session:
-        response = session.invoke(
-            "Invoke the risk model for an internal API with data governance approval granted."
-        )
+        response = session.invoke("Invoke the risk model for an internal API with data governance approval granted.")
     results.append("denied" not in response.lower() or "risk" in response.lower())
 
     return results

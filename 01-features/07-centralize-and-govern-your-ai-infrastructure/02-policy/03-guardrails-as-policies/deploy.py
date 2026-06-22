@@ -143,7 +143,9 @@ def get_or_create_lambda_role(iam_client, account_id: str) -> str:
     print(f"  Creating IAM role: {LAMBDA_ROLE_NAME}")
     trust = {
         "Version": "2012-10-17",
-        "Statement": [{"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}],
+        "Statement": [
+            {"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}
+        ],
     }
     resp = iam_client.create_role(
         RoleName=LAMBDA_ROLE_NAME,
@@ -232,7 +234,9 @@ def create_gateway(ctrl, region: str, account_id: str) -> dict:
                 full = ctrl.get_gateway(gatewayIdentifier=gw["gatewayId"])
                 return {
                     "gateway_id": gw["gatewayId"],
-                    "gateway_arn": full.get("gatewayArn", f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gw['gatewayId']}"),
+                    "gateway_arn": full.get(
+                        "gatewayArn", f"arn:aws:bedrock-agentcore:{region}:{account_id}:gateway/{gw['gatewayId']}"
+                    ),
                     "gateway_url": full.get("gatewayUrl", ""),
                     "role_arn": full.get("roleArn", ""),
                 }
@@ -272,14 +276,16 @@ def create_gateway(ctrl, region: str, account_id: str) -> dict:
     iam.put_role_policy(
         RoleName=gateway_role_name,
         PolicyName="GatewayInlinePolicy",
-        PolicyDocument=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Effect": "Allow", "Action": "lambda:InvokeFunction", "Resource": "*"},
-                {"Effect": "Allow", "Action": "bedrock-agentcore:*", "Resource": "*"},
-                {"Effect": "Allow", "Action": "bedrock:InvokeGuardrailChecks", "Resource": "*"},
-            ],
-        }),
+        PolicyDocument=json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {"Effect": "Allow", "Action": "lambda:InvokeFunction", "Resource": "*"},
+                    {"Effect": "Allow", "Action": "bedrock-agentcore:*", "Resource": "*"},
+                    {"Effect": "Allow", "Action": "bedrock:InvokeGuardrailChecks", "Resource": "*"},
+                ],
+            }
+        ),
     )
     print("  Gateway role inline policy updated")
     time.sleep(15)  # IAM propagation
@@ -335,9 +341,7 @@ def create_lambda_targets(ctrl, gateway_id: str, gateway_arn: str, lambda_client
     # Wait for all targets
     for name, info in target_ids.items():
         for _ in range(30):
-            status = ctrl.get_gateway_target(
-                gatewayIdentifier=gateway_id, targetId=info["target_id"]
-            ).get("status")
+            status = ctrl.get_gateway_target(gatewayIdentifier=gateway_id, targetId=info["target_id"]).get("status")
             if status == "READY":
                 break
             if status in ("FAILED", "CREATE_FAILED"):
@@ -391,9 +395,7 @@ def create_cedar_permit(ctrl, engine_id: str, gateway_arn: str) -> str:
     The guardrail FORBIDs override the permit via deny-overrides semantics.
     """
     print("  Creating base Cedar PERMIT (allow-all + guardrail FORBIDs override)...")
-    cedar_statement = (
-        f'permit(principal, action, resource == AgentCore::Gateway::"{gateway_arn}");'
-    )
+    cedar_statement = f'permit(principal, action, resource == AgentCore::Gateway::"{gateway_arn}");'
     resp = ctrl.create_policy(
         policyEngineId=engine_id,
         name="permit_all_traffic",
@@ -470,56 +472,64 @@ def create_all_guardrail_policies(ctrl, engine_id: str, gateway_arn: str) -> dic
     # Action that carries the customer_notes free-text field.
     # Format: <TargetName>___<toolMethodName>
     action = 'AgentCore::Action::"ApplicationToolTarget___create_application"'
-    scope = f'principal, action == {action}, resource == {resource}'
+    scope = f"principal, action == {action}, resource == {resource}"
 
     policies = {}
 
     # Policy 1: Block violent/threatening content
     # Blocks create_application calls where VIOLENCE confidence >= 0.5 in input
     policies["block_violence"] = create_guardrail_policy(
-        ctrl, engine_id, "block_violence",
-        f'forbid({scope})\n'
-        f'when guardrails {{\n'
+        ctrl,
+        engine_id,
+        "block_violence",
+        f"forbid({scope})\n"
+        f"when guardrails {{\n"
         f'  BedrockGuardrails::ContentFilter(["VIOLENCE"], [context.input.message])["VIOLENCE"]\n'
-        f'  .confidenceScore\n'
+        f"  .confidenceScore\n"
         f'  .greaterThanOrEqual(decimal("0.5"))\n'
-        f'}};',
+        f"}};",
     )
 
     # Policy 2: Block jailbreak / prompt injection attempts
     # Blocks create_application calls where JAILBREAK confidence >= 0.7 in input
     policies["block_jailbreak"] = create_guardrail_policy(
-        ctrl, engine_id, "block_jailbreak",
-        f'forbid({scope})\n'
-        f'when guardrails {{\n'
+        ctrl,
+        engine_id,
+        "block_jailbreak",
+        f"forbid({scope})\n"
+        f"when guardrails {{\n"
         f'  BedrockGuardrails::PromptAttack(["JAILBREAK"], [context.input.message])["JAILBREAK"]\n'
-        f'  .confidenceScore\n'
+        f"  .confidenceScore\n"
         f'  .greaterThanOrEqual(decimal("0.7"))\n'
-        f'}};',
+        f"}};",
     )
 
     # Policy 3: Block SSN in input (PII protection)
     # Blocks create_application calls containing US SSNs with confidence >= 0.5
     policies["block_ssn"] = create_guardrail_policy(
-        ctrl, engine_id, "block_ssn",
-        f'forbid({scope})\n'
-        f'when guardrails {{\n'
+        ctrl,
+        engine_id,
+        "block_ssn",
+        f"forbid({scope})\n"
+        f"when guardrails {{\n"
         f'  BedrockGuardrails::SensitiveInformation(["US_SOCIAL_SECURITY_NUMBER"], [context.input.message])["US_SOCIAL_SECURITY_NUMBER"]\n'
-        f'  .confidenceScore\n'
+        f"  .confidenceScore\n"
         f'  .greaterThanOrEqual(decimal("0.5"))\n'
-        f'}};',
+        f"}};",
     )
 
     # Policy 4: Block credit card numbers in input (PII protection)
     # Blocks create_application calls containing credit card numbers with confidence >= 0.5
     policies["block_credit_cards"] = create_guardrail_policy(
-        ctrl, engine_id, "block_credit_cards",
-        f'forbid({scope})\n'
-        f'when guardrails {{\n'
+        ctrl,
+        engine_id,
+        "block_credit_cards",
+        f"forbid({scope})\n"
+        f"when guardrails {{\n"
         f'  BedrockGuardrails::SensitiveInformation(["CREDIT_DEBIT_CARD_NUMBER"], [context.input.message])["CREDIT_DEBIT_CARD_NUMBER"]\n'
-        f'  .confidenceScore\n'
+        f"  .confidenceScore\n"
         f'  .greaterThanOrEqual(decimal("0.5"))\n'
-        f'}};',
+        f"}};",
     )
 
     return policies
@@ -582,9 +592,7 @@ def main():
 
     # Step 5: Guardrail policies + base permit
     permit_id = create_cedar_permit(ctrl, engine["policyEngineId"], gateway_info["gateway_arn"])
-    guardrail_policy_ids = create_all_guardrail_policies(
-        ctrl, engine["policyEngineId"], gateway_info["gateway_arn"]
-    )
+    guardrail_policy_ids = create_all_guardrail_policies(ctrl, engine["policyEngineId"], gateway_info["gateway_arn"])
 
     # Step 6: Attach engine to gateway
     attach_policy_engine(

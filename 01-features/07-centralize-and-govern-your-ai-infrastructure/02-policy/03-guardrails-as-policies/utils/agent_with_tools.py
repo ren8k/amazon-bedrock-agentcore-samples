@@ -1,5 +1,5 @@
 """
-Insurance Underwriting Agent with MCP Tools via AgentCore Gateway.
+Insurance Underwriting Agent with MCP Tools via AgentCore gateway.
 
 Context manager for a Strands agent that connects to the gateway
 authenticated with SigV4 (IAM auth, no Cognito required).
@@ -25,9 +25,7 @@ def load_config(config_path: str = "guardrail_config.json") -> dict:
     """Load guardrail configuration from guardrail_config.json."""
     path = Path(config_path)
     if not path.exists():
-        raise FileNotFoundError(
-            f"Configuration file not found: {path}\nPlease run deploy.py first."
-        )
+        raise FileNotFoundError(f"Configuration file not found: {path}\nPlease run deploy.py first.")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -53,8 +51,7 @@ class IAMAuth(httpx.Auth):
             method=request.method,
             url=str(request.url),
             data=body,
-            headers={k: v for k, v in request.headers.items()
-                     if k.lower() not in ("content-length",)},
+            headers={k: v for k, v in request.headers.items() if k.lower() not in ("content-length",)},
         )
         BotoSigV4Auth(creds, self.service, self.region).add_auth(aws_req)
         for key, value in aws_req.headers.items():
@@ -66,7 +63,7 @@ class AgentSession:
     """
     Context manager for the insurance underwriting agent session.
 
-    Connects to the AgentCore Gateway using SigV4 (IAM) authentication.
+    Connects to the AgentCore gateway using SigV4 (IAM) authentication.
     The gateway enforces guardrail policies on tool calls.
 
     Usage:
@@ -115,7 +112,7 @@ class AgentSession:
 
         system_prompt = (
             "You are a helpful AI assistant for insurance underwriting operations. "
-            "You have access to tools provided through the AgentCore Gateway. "
+            "You have access to tools provided through the AgentCore gateway. "
             "The gateway enforces guardrail policies that block harmful content, "
             "prompt injection attempts, and sensitive information like SSNs or credit card numbers. "
             "Use only the tools provided. When a tool call is denied by policy, "
@@ -143,8 +140,7 @@ class AgentSession:
             # Content is often a list of {type, text} items — flatten to string
             if isinstance(content, list):
                 content = " ".join(
-                    item.get("text", str(item)) if isinstance(item, dict) else str(item)
-                    for item in content
+                    item.get("text", str(item)) if isinstance(item, dict) else str(item) for item in content
                 )
             else:
                 content = str(content)
