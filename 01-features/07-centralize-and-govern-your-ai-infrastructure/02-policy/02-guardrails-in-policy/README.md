@@ -1,16 +1,6 @@
 # Policy in Amazon Bedrock AgentCore: Guardrails in Policies
 
-[Guardrails in policies](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-in-policies.html) lets you attach Bedrock content-safety classifiers directly to an AgentCore gateway as policy rules. No separate Bedrock Guardrail resource is needed. When an agent invokes a tool, the policy engine extracts fields from the request, calls the Bedrock Guardrails API, and blocks the call if the confidence score meets the threshold. The decision happens before your Lambda backend is ever invoked.
-
-## Background
-
-Without gateway-level enforcement, guardrail logic runs inside the agent or in the Lambda handler, which means unsafe inputs have already reached application code. Guardrails in policies enforces content safety at the **gateway layer**, applied to every tool call regardless of which agent or client makes the request. Key benefits:
-
-- **Zero application changes**: your Lambda tool code is unchanged; the gateway enforces the policy
-- **Centralized governance**: one policy engine covers all tools on a gateway
-- **Deny-by-default**: harmful content is blocked before any backend is invoked
-- **Auditable**: every ALLOW/DENY decision is logged with the policy ID that fired
-- **Layered with Cedar**: guardrail FORBIDs compose naturally with ABAC Cedar policies
+[Guardrails in policies](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-in-policies.html) lets you attach Bedrock Guardrails content-safety classifiers directly to an AgentCore gateway as policy rules. No separate Bedrock Guardrail resource is needed. When an agent invokes a tool, the policy engine extracts fields from the request, calls the Bedrock Guardrails API, and blocks the call if the confidence score meets the threshold. 
 
 ## Architecture
 
@@ -36,34 +26,12 @@ Lambda Tool (ApplicationTool / RiskModelTool / ApprovalTool)
 
 > **Context path mapping**: For MCP `tools/call` requests, `context.input.X` maps to `params.arguments.X`. You can specify one or more paths to evaluate: e.g. `[context.input.message, context.input.systemPrompt]`.
 
-## Regional availability
-
-Guardrails in policies are available in:
-
-| Region | Support |
-|:-------|:--------|
-| US East (N. Virginia) `us-east-1` | ✅ |
-| Europe (London) `eu-west-2` | ✅ |
-| Europe (Stockholm) `eu-north-1` | ✅ |
-| Asia Pacific (Sydney) `ap-southeast-2` | ✅ |
-| Asia Pacific (Tokyo) `ap-northeast-1` | ✅ |
-
-## Guardrail types
-
-| Policy Name | Guardrail function | Category | Threshold | Effect |
-|:------------|:-------------------|:---------|:----------|:-------|
-| `block_violence` | `ContentFilter` | `VIOLENCE` | >= 0.5 | FORBID |
-| `block_jailbreak` | `PromptAttack` | `JAILBREAK` | >= 0.7 | FORBID |
-| `block_ssn` | `SensitiveInformation` | `US_SOCIAL_SECURITY_NUMBER` | >= 0.5 | FORBID |
-| `block_credit_cards` | `SensitiveInformation` | `CREDIT_DEBIT_CARD_NUMBER` | >= 0.5 | FORBID |
-
-All guardrail FORBIDs are scoped to the gateway resource and override the base Cedar PERMIT via deny-overrides semantics.
 
 ## Prerequisites
 
 - Python 3.12+, AWS CLI configured with credentials (account with IAM, Lambda, Bedrock AgentCore access)
-- Region must be one of the supported regions above (us-east-1 recommended)
-- Amazon Bedrock Nova Lite model access in your region
+- Region must be one of the supported regions above 
+- Amazon Bedrock model access in your region
 
 ## Quick Start: Python SDK
 
@@ -91,7 +59,7 @@ python cleanup.py
 Use the CLI for a project-based workflow instead of direct boto3 calls.
 
 ```bash
-npm install -g @aws/agentcore
+npm install -g @aws/agentcore@latest
 agentcore --version
 
 # 1. Create a project and wire gateway + policy engine
@@ -125,10 +93,10 @@ agentcore add policy \
   --name BlockViolence \
   --engine InsurancePolicyEngine \
   --gateway InsuranceGateway \
-  --target ApplicationTool \
   --form-category contentFilter \
   --form-filters VIOLENCE \
   --form-effect forbid \
+  --form-data-path context.input.message \
   --validation-mode IGNORE_ALL_FINDINGS \
   --enforcement-mode ACTIVE
 
@@ -136,10 +104,10 @@ agentcore add policy \
   --name BlockJailbreak \
   --engine InsurancePolicyEngine \
   --gateway InsuranceGateway \
-  --target ApplicationTool \
   --form-category promptAttack \
   --form-filters JAILBREAK \
   --form-effect forbid \
+  --form-data-path context.input.message \
   --validation-mode IGNORE_ALL_FINDINGS \
   --enforcement-mode ACTIVE
 
@@ -284,13 +252,6 @@ The gateway execution role needs `bedrock:InvokeGuardrailChecks` because the pol
 
 `deploy.py` creates this role automatically.
 
-## Known limitations
-
-- Guardrails use ML scoring, not regular expressions; regex and pattern matching are not supported
-- `when guardrails { }` and `when { }` cannot be mixed in the same policy statement
-- A `when guardrails { }` block must contain at least one guardrail definition
-- Guardrails are non-deterministic: the same input can produce different confidence scores; Cedar policy evaluation is deterministic
-- Guardrails are only available in the regions listed above
 
 ## Files
 
