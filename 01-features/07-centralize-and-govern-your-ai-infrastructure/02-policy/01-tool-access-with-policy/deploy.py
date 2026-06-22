@@ -1,5 +1,5 @@
 """
-Deploy all resources for the AgentCore Policy demo.
+Deploy all resources for the policy in Amazon Bedrock AgentCore demo.
 
 This script creates an end-to-end insurance underwriting demo environment:
 
@@ -159,7 +159,7 @@ def get_or_create_lambda_role(iam_client, account_id: str) -> str:
     resp = iam_client.create_role(
         RoleName=LAMBDA_ROLE_NAME,
         AssumeRolePolicyDocument=json.dumps(trust),
-        Description="Execution role for AgentCore Policy demo Lambda functions",
+        Description="Execution role for policy in Amazon Bedrock AgentCore demo Lambda functions",
     )
     iam_client.attach_role_policy(
         RoleName=LAMBDA_ROLE_NAME,
@@ -189,7 +189,7 @@ def deploy_lambda(lambda_client, function_name: str, js_path: str, role_arn: str
             Role=role_arn,
             Handler="index.handler",
             Code={"ZipFile": zip_bytes},
-            Description=f"AgentCore Policy demo: {function_name}",
+            Description=f"policy in Amazon Bedrock AgentCore demo: {function_name}",
             Timeout=30,
             MemorySize=256,
         )
@@ -418,7 +418,7 @@ def lambda_handler(event, context):
             Role=role_arn,
             Handler="lambda_function.lambda_handler",
             Code={"ZipFile": zip_bytes},
-            Description="Cognito Pre-Token-Generation trigger for AgentCore Policy demo",
+            Description="Cognito Pre-Token-Generation trigger for policy in Amazon Bedrock AgentCore demo",
             Timeout=30,
             MemorySize=128,
         )
@@ -473,13 +473,13 @@ def configure_cognito_trigger(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Deploy AgentCore Policy demo resources")
+    parser = argparse.ArgumentParser(description="Deploy policy in Amazon Bedrock AgentCore demo resources")
     parser.add_argument("--region", default=None, help="AWS region (defaults to configured default)")
     args = parser.parse_args()
 
     _, REGION, ACCOUNT_ID = get_aws_context(args.region)
     print("=" * 65)
-    print("AgentCore Policy Demo — Deployment")
+    print("Policy in Amazon Bedrock AgentCore Demo — Deployment")
     print("=" * 65)
     print(f"  Region:  {REGION}")
     print(f"  Account: {ACCOUNT_ID}")

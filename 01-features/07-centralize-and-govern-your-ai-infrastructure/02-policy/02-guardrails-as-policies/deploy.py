@@ -150,7 +150,7 @@ def get_or_create_lambda_role(iam_client, account_id: str) -> str:
     resp = iam_client.create_role(
         RoleName=LAMBDA_ROLE_NAME,
         AssumeRolePolicyDocument=json.dumps(trust),
-        Description="Execution role for AgentCore Policy demo Lambda functions",
+        Description="Execution role for policy in Amazon Bedrock AgentCore demo Lambda functions",
     )
     iam_client.attach_role_policy(
         RoleName=LAMBDA_ROLE_NAME,

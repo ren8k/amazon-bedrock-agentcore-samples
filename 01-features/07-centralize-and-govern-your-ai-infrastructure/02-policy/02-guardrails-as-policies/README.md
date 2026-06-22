@@ -1,4 +1,4 @@
-# AgentCore Policy — Guardrails as Policies
+# Policy in Amazon Bedrock AgentCore — Guardrails as Policies
 
 Guardrails as Policies lets you attach Bedrock content-safety classifiers directly to an AgentCore gateway as policy rules — no separate Bedrock Guardrail resource needed. When an agent invokes a tool, the policy engine extracts fields from the request, runs the Bedrock Guardrails ML classifier, and blocks the call if the confidence score meets the threshold. The decision happens before your Lambda backend is ever invoked.
 

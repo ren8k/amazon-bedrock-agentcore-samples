@@ -1,4 +1,4 @@
-# AgentCore policy — Fine-Grained Access Control
+# Policy in Amazon Bedrock AgentCore — Fine-Grained Access Control
 
 Enforce Cedar policies on AI agent-to-tool interactions through an AgentCore MCP gateway.
 Covers NL2Cedar (natural language → Cedar) and hand-authored attribute-based access control
@@ -652,7 +652,7 @@ The `like` operator supports wildcards for flexible substring matching:
 ## Additional Resources
 
 - [Cedar policy Language](https://docs.cedarpolicy.com/)
-- [Amazon Bedrock AgentCore policy — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)
+- [Policy in Amazon Bedrock AgentCore — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy.html)
 - [AgentCore gateway — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway.html)
 - [Supported Cedar policy Examples](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/example-policies.html)
 - [Amazon Cognito Pre-Token-Generation Trigger](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html)

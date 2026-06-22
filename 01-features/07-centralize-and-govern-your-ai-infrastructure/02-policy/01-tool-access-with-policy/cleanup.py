@@ -155,7 +155,7 @@ def delete_lambda(lc, function_name: str) -> None:
 
 def main():
     print("=" * 65)
-    print("AgentCore Policy Demo — Cleanup")
+    print("Policy in Amazon Bedrock AgentCore Demo — Cleanup")
     print("=" * 65)
 
     config = load_config()

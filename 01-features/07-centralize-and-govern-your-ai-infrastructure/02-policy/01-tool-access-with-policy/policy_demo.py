@@ -1,7 +1,7 @@
 """
-AgentCore Policy Demo — NL2Cedar, Direct Cedar, and Fine-Grained ABAC.
+Policy in Amazon Bedrock AgentCore Demo — NL2Cedar, Direct Cedar, and Fine-Grained ABAC.
 
-This script demonstrates the full range of AgentCore Policy capabilities:
+This script demonstrates the full range of policy in Amazon Bedrock AgentCore capabilities:
 
   Part A — NL2Cedar: Generate Cedar policies from natural language
     A1. Simple single-statement: coverage + region constraints
@@ -865,7 +865,7 @@ def part_c_agent_demo(config: dict):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AgentCore Policy demo")
+    parser = argparse.ArgumentParser(description="policy in Amazon Bedrock AgentCore demo")
     parser.add_argument(
         "--section",
         choices=["A", "B", "C"],
@@ -877,7 +877,7 @@ def main():
     config = load_config()
 
     print("=" * 65)
-    print("AgentCore Policy Demo")
+    print("Policy in Amazon Bedrock AgentCore Demo")
     print("=" * 65)
     print(f"  Region:      {config['region']}")
     print(f"  Gateway ID:  {config['gateway']['gateway_id']}")
