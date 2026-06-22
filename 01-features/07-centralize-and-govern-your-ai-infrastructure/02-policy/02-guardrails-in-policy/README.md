@@ -1,16 +1,16 @@
-# Policy in Amazon Bedrock AgentCore — Guardrails as Policies
+# Policy in Amazon Bedrock AgentCore: Guardrails in Policies
 
-Guardrails as Policies lets you attach Bedrock content-safety classifiers directly to an AgentCore gateway as policy rules — no separate Bedrock Guardrail resource needed. When an agent invokes a tool, the policy engine extracts fields from the request, runs the Bedrock Guardrails ML classifier, and blocks the call if the confidence score meets the threshold. The decision happens before your Lambda backend is ever invoked.
+[Guardrails in policies](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-in-policies.html) lets you attach Bedrock content-safety classifiers directly to an AgentCore gateway as policy rules. No separate Bedrock Guardrail resource is needed. When an agent invokes a tool, the policy engine extracts fields from the request, calls the Bedrock Guardrails API, and blocks the call if the confidence score meets the threshold. The decision happens before your Lambda backend is ever invoked.
 
-## Why this matters
+## Background
 
-Traditional guardrail approaches run inside the agent or in the Lambda handler, which means unsafe inputs have already been passed to application code. Guardrails as Policies enforces content safety at the **gateway layer** — centrally, consistently across every tool call, regardless of which agent or SDK client is making the request. Key benefits:
+Without gateway-level enforcement, guardrail logic runs inside the agent or in the Lambda handler, which means unsafe inputs have already reached application code. Guardrails in policies enforces content safety at the **gateway layer**, applied to every tool call regardless of which agent or client makes the request. Key benefits:
 
-- **Zero application changes** — your Lambda tool code is unchanged; the gateway enforces the policy
-- **Centralized governance** — one policy engine covers all tools on a gateway
-- **Deny-by-default** — harmful content is blocked before any backend is invoked
-- **Auditable** — every ALLOW/DENY decision is logged with the policy ID that fired
-- **Layered with Cedar** — guardrail FORBIDs compose naturally with ABAC Cedar policies
+- **Zero application changes**: your Lambda tool code is unchanged; the gateway enforces the policy
+- **Centralized governance**: one policy engine covers all tools on a gateway
+- **Deny-by-default**: harmful content is blocked before any backend is invoked
+- **Auditable**: every ALLOW/DENY decision is logged with the policy ID that fired
+- **Layered with Cedar**: guardrail FORBIDs compose naturally with ABAC Cedar policies
 
 ## Architecture
 
@@ -34,7 +34,7 @@ Lambda Tool (ApplicationTool / RiskModelTool / ApprovalTool)
 
 **Demo scenario**: Insurance underwriting agent. The `ApplicationTool.create_application` tool accepts a required `message` free-text field. Guardrail policies scan this field via `context.input.message` and block harmful content before it reaches the backend.
 
-> **Context path mapping**: For MCP `tools/call` requests, `context.input.X` maps to `params.arguments.X`. The guardrail evaluator requires the scanned field to be named `message` (or `prompt`). This is why the tool schema uses `message` as the free-text field name — it maps directly to `context.input.message` in Cedar guardrail policies.
+> **Context path mapping**: For MCP `tools/call` requests, `context.input.X` maps to `params.arguments.X`. You can specify one or more paths to evaluate: e.g. `[context.input.message, context.input.systemPrompt]`.
 
 ## Regional availability
 
@@ -48,7 +48,7 @@ Guardrails in policies are available in:
 | Asia Pacific (Sydney) `ap-southeast-2` | ✅ |
 | Asia Pacific (Tokyo) `ap-northeast-1` | ✅ |
 
-## Guardrail Policy Types
+## Guardrail types
 
 | Policy Name | Guardrail function | Category | Threshold | Effect |
 |:------------|:-------------------|:---------|:----------|:-------|
@@ -65,7 +65,7 @@ All guardrail FORBIDs are scoped to the gateway resource and override the base C
 - Region must be one of the supported regions above (us-east-1 recommended)
 - Amazon Bedrock Nova Lite model access in your region
 
-## Quick Start — Python SDK
+## Quick Start: Python SDK
 
 ```bash
 pip install -r requirements.txt
@@ -86,9 +86,9 @@ python guardrail_demo.py --section B
 python cleanup.py
 ```
 
-## Quick Start — AgentCore CLI
+## Quick Start: AgentCore CLI
 
-The CLI provides an interactive, project-based workflow. Use this path if you prefer infrastructure-as-code over scripted boto3 calls.
+Use the CLI for a project-based workflow instead of direct boto3 calls.
 
 ```bash
 npm install -g @aws/agentcore
@@ -156,7 +156,7 @@ agentcore remove all --json && agentcore deploy
 
 ## Demo Scenarios
 
-### Part A — Direct MCP Tests
+### Part A: Direct MCP Tests
 
 Sends raw JSON-RPC requests to the gateway to verify guardrail enforcement without an agent:
 
@@ -168,15 +168,15 @@ Sends raw JSON-RPC requests to the gateway to verify guardrail enforcement witho
 | SSN in message | `SSN: 123-45-6789` | DENY |
 | Credit card in message | `Visa 4111-1111-1111-1111` | DENY |
 
-### Part B — Agent End-to-End
+### Part B: Agent End-to-End
 
-A Strands agent connects to the guardrail-protected gateway via MCP. When a guardrail FORBID fires, the gateway returns an MCP error and the agent surfaces a natural-language denial to the user.
+A Strands agent connects to the guardrail-protected gateway via MCP. When a guardrail FORBID fires, the gateway returns an MCP error and the agent returns a denial message to the user.
 
 ## How It Works
 
 ### Cedar PERMIT + Guardrail FORBID pattern
 
-Cedar is **default-deny** — every request is blocked unless an explicit `permit` rule allows it. A guardrail FORBID alone would block *everything*. The correct pattern is:
+Cedar is **default-deny**: every request is blocked unless an explicit `permit` rule allows it. A guardrail FORBID alone would block *everything*. The correct pattern is:
 
 ```cedar
 // Base permit — allows all traffic to this gateway
@@ -200,7 +200,7 @@ The `forbid` wins over the `permit` via deny-overrides semantics.
 
 ### Guardrail Cedar syntax
 
-Guardrail policies use `when guardrails { ... }` instead of the standard `when { ... }` condition block. You cannot mix standard Cedar conditions with guardrail conditions in the same policy.
+Guardrail policies use `when guardrails { ... }` instead of the standard `when { ... }` condition block. You cannot mix standard Cedar conditions with guardrail conditions in the same policy statement.
 
 ```cedar
 forbid(principal, action, resource == AgentCore::Gateway::"<arn>")
@@ -214,7 +214,7 @@ when guardrails {
 | Element | Values |
 |:--------|:-------|
 | `<Function>` | `ContentFilter` · `PromptAttack` · `SensitiveInformation` |
-| `<context-path>` | `context.input.message` · `context.input.prompt` · `context.output.message` — for MCP, maps to `params.arguments.<field>` |
+| `<context-path>` | `context.input.message` · `context.input.prompt` · `context.output.message` · `context.input.systemPrompt` — for MCP, maps to `params.arguments.<field>` |
 | `<operator>` | `.greaterThan()` · `.greaterThanOrEqual()` · `.lessThan()` · `.lessThanOrEqual()` |
 | `<threshold>` | Decimal string e.g. `"0.5"`. Scores are discrete: `0, 0.2, 0.4, 0.6, 0.8, 1.0` |
 
@@ -233,13 +233,24 @@ when guardrails {
 
 | Effect | Behavior |
 |:-------|:---------|
-| `forbid` | Block requests where score ≥ threshold (input phase) |
-| `permit` | Allow only requests where score < threshold |
-| `suppressOutput` | Block the tool/model response when output score ≥ threshold |
+| `forbid` | Block the request when the score meets the threshold |
+| `permit` | Allow only requests where the score meets the threshold |
+| `suppressOutput` | Suppress the action's output when the score meets the threshold (runs after the action completes) |
+
+### Score aggregations
+
+You can apply comparison operators to any of the following aggregations:
+
+| Aggregation | Description | Example |
+|:------------|:------------|:--------|
+| `["<CATEGORY>"].confidenceScore` | Score for a specific category | `["HATE"].confidenceScore` |
+| `.maxConfidenceScore()` | Maximum confidence across all scanned categories | `.maxConfidenceScore()` |
+| `.minConfidenceScore()` | Minimum confidence across all scanned categories | `.minConfidenceScore()` |
+| `.count()` | Number of findings detected | `.count()` |
 
 ### Confidence score thresholds
 
-Guardrail scores are discrete values: `0, 0.2, 0.4, 0.6, 0.8, 1.0`. Default thresholds calibrated by AWS:
+Guardrail scores are discrete values: `0, 0.2, 0.4, 0.6, 0.8, 1.0`. Default thresholds set by AWS:
 
 | Safeguard | Default threshold |
 |:----------|:-----------------|
@@ -255,12 +266,19 @@ The gateway execution role needs `bedrock:InvokeGuardrailChecks` because the pol
 
 ```json
 {
-  "Effect": "Allow",
-  "Action": [
-    "bedrock-agentcore:*",
-    "bedrock:InvokeGuardrailChecks"
-  ],
-  "Resource": "*"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "bedrock-agentcore:*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeGuardrailChecks",
+      "Resource": "*"
+    }
+  ]
 }
 ```
 
@@ -268,11 +286,10 @@ The gateway execution role needs `bedrock:InvokeGuardrailChecks` because the pol
 
 ## Known limitations
 
-- Guardrail evaluation adds ~300–400 ms latency per tool call
-- Guardrails are non-deterministic (same input can produce different scores); Cedar policy evaluation itself is deterministic
+- Guardrails use ML scoring, not regular expressions; regex and pattern matching are not supported
 - `when guardrails { }` and `when { }` cannot be mixed in the same policy statement
-- For MCP `tools/call`, `context.input.X` maps to `params.arguments.X`. The guardrail evaluator requires the scanned field to be named `message` or `prompt`; arbitrary field names (e.g. `customer_notes`) are not recognized. Design your tool schema with this constraint in mind.
-- If the scanned field is absent from the tool arguments, the guardrail fails closed (request is denied). The `message` field is `required` in the `create_application` schema to prevent silent denials.
+- A `when guardrails { }` block must contain at least one guardrail definition
+- Guardrails are non-deterministic: the same input can produce different confidence scores; Cedar policy evaluation is deterministic
 - Guardrails are only available in the regions listed above
 
 ## Files
@@ -290,7 +307,7 @@ The gateway execution role needs `bedrock:InvokeGuardrailChecks` because the pol
 
 ## Additional resources
 
-- [Guardrails in policies — Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-in-policies.html)
-- [Getting started with guardrails — CLI walkthrough](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-getting-started.html)
+- [Guardrails in policies: Developer Guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-in-policies.html)
+- [Getting started with guardrails: CLI walkthrough](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-guardrails-getting-started.html)
 - [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html)
-- [`01-tool-access-with-policy/`](../01-tool-access-with-policy/) — Cedar ABAC policies with NL2Cedar
+- [`01-tool-access-with-policy/`](../01-tool-access-with-policy/): Cedar ABAC policies with NL2Cedar
