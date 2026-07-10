@@ -4,23 +4,7 @@
 
 ## Architecture
 
-```
-AI Agent (Strands)
-        │
-        ▼  MCP tools/call
-AgentCore gateway (IAM auth)
-        │
-        ├─► Policy Engine (ENFORCE mode)
-        │       │
-        │       ├── permit(all)                    ← base Cedar permit
-        │       ├── FORBID block_violence           ← VIOLENCE >= 0.5 on create_application
-        │       ├── FORBID block_jailbreak          ← JAILBREAK >= 0.7 on create_application
-        │       ├── FORBID block_ssn               ← SSN >= 0.5 on create_application
-        │       └── FORBID block_credit_cards      ← CREDIT_CARD >= 0.5 on create_application
-        │
-        ▼ (if ALLOW)
-Lambda Tool (ApplicationTool / RiskModelTool / ApprovalTool)
-```
+![architecture](./images/architecture.png)
 
 **Demo scenario**: Insurance underwriting agent. The `ApplicationTool.create_application` tool accepts a required `message` free-text field. Guardrail policies scan this field via `context.input.message` and block harmful content before it reaches the backend.
 

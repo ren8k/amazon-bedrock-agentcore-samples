@@ -6,23 +6,7 @@ Covers NL2Cedar (natural language → Cedar) and hand-authored attribute-based a
 
 ## Architecture
 
-```
-┌──────────────┐  JWT Token    ┌────────────────────┐
-│   AI Agent   │──────────────▶│  AgentCore gateway  │
-│  (Strands)   │               │  + JWT Authorizer   │
-└──────────────┘               └────────┬───────────┘
-                                        │ Cedar policy check
-                                        ▼
-                               ┌────────────────────┐      ┌──────────────┐
-                               │  Cedar policy Eng. │      │  Lambda Tool │
-                               │  (ENFORCE mode)    │─────▶│  (if ALLOW)  │
-                               └────────────────────┘      └──────────────┘
-         ┌──────────────────────────────────────┐
-         │  Amazon Cognito (V3_0 trigger)        │
-         │  Injects custom claims into JWT:      │
-         │  department_name, groups, role, ...   │
-         └──────────────────────────────────────┘
-```
+![architecture](./images/architecture.png)
 
 **Demo scenario:** Insurance underwriting system with three Lambda-backed tools:
 - `ApplicationTool` — create insurance applications (`applicant_region`, `coverage_amount`)
